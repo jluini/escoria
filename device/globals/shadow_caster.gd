@@ -34,7 +34,7 @@ func get_id(body):
 	var body_id
 
 	if not "global_id" in body:
-		assert body is esc_type.PLAYER
+		assert(body is esc_type.PLAYER)
 		body_id = "player"
 	else:
 		body_id = body.global_id
