@@ -400,9 +400,7 @@ func interact(p_params):
 		var obj = p_params[0]
 		vm.clear_action()
 		var action = p_params[1]
-		if !action:
-			action = obj.get_action()
-
+		
 		if p_params.size() > 2:
 			vm.clear_action()
 			if obj == p_params[2]:
