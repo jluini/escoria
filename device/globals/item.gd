@@ -25,7 +25,7 @@ var event_table = {}
 var clicked = false
 
 func is_clicked():
-       return clicked
+	return clicked
 
 
 #func _set(name, val):
@@ -93,7 +93,7 @@ func mouse_exit():
 	_check_focus(false, false)
 
 func area_input(_viewport, event, _shape_idx):
-       input(event)
+	input(event)
 
 func input(event):
 	if event is InputEventMouseButton || event.is_action("ui_accept"):
@@ -140,7 +140,7 @@ func get_drag_data(point):
 	c.show()
 	it.show()
 	if (self as Node) is Control:
-	    (self as Node).set_drag_preview(c)
+		(self as Node).set_drag_preview(c)
 
 	get_tree().call_group("background", "force_drag", global_id, c)
 	get_tree().call_group("game", "interact", [self, "use"])
