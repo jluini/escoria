@@ -113,9 +113,70 @@ func ev_left_dblclick_on_trigger(obj, pos, event):
 		player.walk_to(pos, {"fast": true})
 
 func ev_left_click_on_item(obj, pos, event):
-	ev_left_click_on_item_or_npc(obj, pos, event)
+	left_click_on_item_or_npc(obj, pos, event)
+
+func left_click_on_item_or_npc(obj, pos, event):
+	printt(obj.name, "left-clicked at", pos, "with", event, can_click())
+
+	if not can_click():
+		return
+
+	if vm.action_menu and obj.use_action_menu:
+		if !ProjectSettings.get_setting("escoria/ui/right_mouse_button_action_menu"):
+			spawn_action_menu(obj)
+			return
+		elif vm.action_menu.is_visible():
+			# XXX: Can't close action menu here or doubleclick would cause an action
+			if obj == vm.hover_object:
+				return
+			else:
+				vm.action_menu.stop()
+
+	if vm.inventory and vm.inventory.blocks_tooltip():
+		vm.inventory.close()
+		if vm.tooltip:
+			vm.tooltip.update()
+		return
+
+	# Many overlapping items can receive the click event,
+	# but only the topmost is really `clicked`
+	if not obj.clicked:
+		return
+
+	var walk_context = {"fast": event.doubleclick}
+
+	# Make it possible to abort an interaction before the player interacts
+	if player.interact_status == player.interact_statuses.INTERACT_WALKING:
+		# by overriding the interaction status
+		player.interact_status = player.interact_statuses.INTERACT_NONE
+		player.params_queue = null
+		player.walk_to(pos, walk_context)
+		return
+
+	if click:
+		click.set_position(pos)
+	if click_anim:
+		click_anim.play("click")
+
+	if obj.has_method("get_interact_pos"):
+		pos = obj.get_interact_pos()
+
+	player.walk_to(pos, walk_context)
 	
+	# XXX: Interacting with current_tool etc should be a signal
+	if vm.current_action:
+		player.interact([obj, vm.current_action, vm.current_tool])
+	else:
+		var default_action = get_left_click_default_action(obj)
+		
+		# TODO is it necessary to exclude 'walk' case?
+		if default_action and default_action != "walk":
+			player.interact([obj, default_action, null])
+
 func ev_left_dblclick_on_item(obj, pos, event):
+	left_dblclick_on_item_or_npc(obj, pos, event)
+
+func left_dblclick_on_item_or_npc(obj, pos, event):
 	printt(obj.name, "left-dblclicked at", pos, "with", event, can_click())
 
 	if not can_click():
@@ -168,6 +229,9 @@ func ev_left_dblclick_on_item(obj, pos, event):
 		player.walk_to(pos, walk_context)
 
 func ev_right_click_on_item(obj, pos, event):
+	right_click_on_item_or_npc(obj, pos, event)
+	
+func right_click_on_item_or_npc(obj, pos, event):
 	printt(obj.name, "right-clicked at", pos, "with", event, can_click())
 
 	if not can_click():
@@ -295,74 +359,13 @@ func ev_mouse_enter_npc(obj):
 			vm.report_warnings("game", ["No tooltip for npc " + obj.name])
 
 func ev_left_click_on_npc(obj, pos, event):
-	ev_left_click_on_item_or_npc(obj, pos, event)
+	left_click_on_item_or_npc(obj, pos, event)
 
 func ev_left_dblclick_on_npc(obj, pos, event):
-	printt(obj.name, "left-dblclicked at", pos, "with", event, can_click())
-
-	if not can_click():
-		return
-
-	if vm.action_menu and vm.action_menu.is_visible():
-		vm.action_menu.stop()
-		return
-
-	var walk_context = {"fast": event.doubleclick}
-
-	# Make it possible to abort an interaction before the player interacts
-	if player.interact_status == player.interact_statuses.INTERACT_WALKING:
-		# by overriding the interaction status
-		player.interact_status = player.interact_statuses.INTERACT_NONE
-		player.params_queue = null
-		player.walk_to(pos, walk_context)
-
-	var action = "walk"
-
-	# Cannot use the object action if an action and tool is selected,
-	# because the event is probably not defined
-	var obj_action
-	if vm.current_action and vm.current_tool:
-		obj_action = vm.current_action
-	else:
-		obj_action = obj.get_action()
-
-	# See if there's a doubleclick default action
-	if obj_action_req_dblc:
-		if obj_action:
-			action = obj_action
-		elif default_obj_action:
-			action = default_obj_action
-
-	if click:
-		click.set_position(pos)
-	if click_anim:
-		click_anim.play("click")
-
-	if action != "walk":
-		# Resolve telekinesis
-		if action in obj.event_table:
-			if player.task == "walk":
-				player.walk_stop(player.get_position())
-				vm.clear_current_action()
-
-		player.interact([obj, action, vm.current_tool])
-	else:
-		player.walk_to(pos, walk_context)
+	left_dblclick_on_item_or_npc(obj, pos, event)
 
 func ev_right_click_on_npc(obj, pos, event):
-	printt(obj.name, "right-clicked at", pos, "with", event, can_click())
-
-	if not can_click():
-		return
-
-	var inventory_open = vm.inventory and vm.inventory.blocks_tooltip()
-
-	if obj.use_action_menu and not inventory_open:
-		if ProjectSettings.get_setting("escoria/ui/right_mouse_button_action_menu"):
-			spawn_action_menu(obj)
-			return
-	elif inventory_open:
-		vm.inventory.close()
+	right_click_on_item_or_npc(obj, pos, event)
 
 func ev_mouse_exit_npc(obj):
 	printt(obj.name, "mouse_exit_npc")
@@ -666,63 +669,7 @@ func _exit_tree():
 	if action_menu:
 		action_menu.free()
 
-func ev_left_click_on_item_or_npc(obj, pos, event):
-	printt(obj.name, "left-clicked at", pos, "with", event, can_click())
-
-	if not can_click():
-		return
-
-	if vm.action_menu and obj.use_action_menu:
-		if !ProjectSettings.get_setting("escoria/ui/right_mouse_button_action_menu"):
-			spawn_action_menu(obj)
-			return
-		elif vm.action_menu.is_visible():
-			# XXX: Can't close action menu here or doubleclick would cause an action
-			if obj == vm.hover_object:
-				return
-			else:
-				vm.action_menu.stop()
-
-	if vm.inventory and vm.inventory.blocks_tooltip():
-		vm.inventory.close()
-		if vm.tooltip:
-			vm.tooltip.update()
-		return
-
-	# Many overlapping items can receive the click event,
-	# but only the topmost is really `clicked`
-	if not obj.clicked:
-		return
-
-	var walk_context = {"fast": event.doubleclick}
-
-	# Make it possible to abort an interaction before the player interacts
-	if player.interact_status == player.interact_statuses.INTERACT_WALKING:
-		# by overriding the interaction status
-		player.interact_status = player.interact_statuses.INTERACT_NONE
-		player.params_queue = null
-		player.walk_to(pos, walk_context)
-		return
-
-	if click:
-		click.set_position(pos)
-	if click_anim:
-		click_anim.play("click")
-
-	if obj.has_method("get_interact_pos"):
-		pos = obj.get_interact_pos()
-
-	player.walk_to(pos, walk_context)
-	
-	# XXX: Interacting with current_tool etc should be a signal
-	if vm.current_action:
-		player.interact([obj, vm.current_action, vm.current_tool])
-	else:
-		var default_action = get_left_click_default_action(obj)
-		
-		# TODO is it necessary to exclude 'walk' case?
-		if default_action and default_action != "walk":
-			player.interact([obj, default_action, null])
+###################
 
 func get_left_click_default_action(obj):
 	if obj_action_req_dblc:
