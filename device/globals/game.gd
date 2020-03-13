@@ -163,15 +163,13 @@ func left_click_on_item_or_npc(obj, pos, event):
 
 	player.walk_to(pos, walk_context)
 	
-	# XXX: Interacting with current_tool etc should be a signal
-	if vm.current_action:
-		player.interact([obj, vm.current_action, vm.current_tool])
-	else:
-		var default_action = get_left_click_default_action(obj)
-		
-		# TODO is it necessary to exclude 'walk' case?
-		if default_action and default_action != "walk":
-			player.interact([obj, default_action, null])
+	var action = get_left_click_action(obj)
+	
+	# TODO is it necessary to exclude 'walk' case?
+	if action and action != "walk":
+		# XXX: Interacting with current_tool etc should be a signal
+		player.interact([obj, action, vm.current_tool])
+
 
 func ev_left_dblclick_on_item(obj, pos, event):
 	left_dblclick_on_item_or_npc(obj, pos, event)
@@ -194,29 +192,14 @@ func left_dblclick_on_item_or_npc(obj, pos, event):
 		player.interact_status = player.interact_statuses.INTERACT_NONE
 		player.params_queue = null
 		player.walk_to(pos, walk_context)
-
-	var action = "walk"
-
-	# Cannot use the object action if an action and tool is selected,
-	# because the event is probably not defined
-	var obj_action
-	if vm.current_action and vm.current_tool:
-		obj_action = vm.current_action
-	else:
-		obj_action = obj.get_action()
-
-	# See if there's a doubleclick default action
-	if obj_action_req_dblc:
-		if obj_action:
-			action = obj_action
-		elif default_obj_action:
-			action = default_obj_action
-
+	
 	if click:
 		click.set_position(pos)
 	if click_anim:
 		click_anim.play("click")
-
+	
+	var action = get_left_dblclick_action(obj)
+	
 	if action != "walk":
 		# Resolve telekinesis
 		if action in obj.event_table:
@@ -671,12 +654,26 @@ func _exit_tree():
 
 ###################
 
-func get_left_click_default_action(obj):
-	if obj_action_req_dblc:
-		return ""
-	else:
-		var obj_action = obj.get_action()
-		if obj_action:
-			return obj_action
-		else:
+func get_left_click_action(obj):
+	if vm.current_action:
+		return vm.current_action
+	elif not obj_action_req_dblc:
+		if obj.get_action():
+			return obj.get_action()
+		elif default_obj_action:
 			return default_obj_action
+	
+	return "walk"
+	
+func get_left_dblclick_action(obj):
+	if obj_action_req_dblc:
+		# Cannot use the object action if an action and tool is selected,
+		# because the event is probably not defined
+		if vm.current_action and vm.current_tool:
+			return vm.current_action
+		elif obj.get_action():
+			return obj.get_action()
+		elif default_obj_action:
+			return default_obj_action
+	
+	return "walk"
