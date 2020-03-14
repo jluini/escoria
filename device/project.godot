@@ -101,6 +101,10 @@ use={
  ]
 }
 
+[locale]
+
+translations=PoolStringArray( "res://demo/translations/general.en.translation", "res://demo/translations/general.es.translation", "res://demo/translations/general.fr.translation" )
+
 [platform]
 
 action_menu_scale=1
